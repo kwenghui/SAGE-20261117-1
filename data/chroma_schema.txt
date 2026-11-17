@@ -1,0 +1,215 @@
+====================================================================================================
+CHROMADB SCHEMA REPORT
+Location: C:\Development\data\chroma_singstat
+ChromaDB version: 1.5.9
+====================================================================================================
+
+PART 1: COLLECTIONS
+====================================================================================================
+Total collections: 1
+
+----------------------------------------------------------------------------------------------------
+COLLECTION: sage_singstat_official
+----------------------------------------------------------------------------------------------------
+ID: 30fff799-ef53-4de2-96dd-877812080262
+Records: 100453
+Metadata:
+null
+Configuration:
+{
+  "hnsw": {
+    "space": "cosine",
+    "ef_construction": 100,
+    "ef_search": 100,
+    "max_neighbors": 16,
+    "resize_factor": 1.2,
+    "sync_threshold": 1000
+  },
+  "spann": null,
+  "embedding_function": "<chromadb.utils.embedding_functions.openai_embedding_function.OpenAIEmbeddingFunction object at 0x000001A9EB4967B0>"
+}
+Embedding dimensions: 1536
+
+METADATA FIELDS (first 1000 records):
+  type: str
+
+Metadata fields observed: 1
+
+
+PART 2: INTERNAL SQLITE SCHEMA
+====================================================================================================
+
+DATABASE: C:\Development\data\chroma_singstat\chroma.sqlite3
+----------------------------------------------------------------------------------------------------
+
+-- TABLE: acquire_write
+CREATE TABLE acquire_write (
+                id INTEGER PRIMARY KEY,
+                lock_status INTEGER NOT NULL
+            );
+
+-- TABLE: collection_metadata
+CREATE TABLE collection_metadata (
+    collection_id TEXT REFERENCES collections(id) ON DELETE CASCADE,
+    key TEXT NOT NULL,
+    str_value TEXT,
+    int_value INTEGER,
+    float_value REAL, bool_value INTEGER,
+    PRIMARY KEY (collection_id, key)
+);
+
+-- TABLE: collections
+CREATE TABLE "collections" (
+    id TEXT PRIMARY KEY, -- unique globally
+    name TEXT NOT NULL, -- unique per database
+    dimension INTEGER,
+    database_id TEXT NOT NULL REFERENCES databases(id) ON DELETE CASCADE, config_json_str TEXT, schema_str TEXT,
+    UNIQUE (name, database_id)
+);
+
+-- TABLE: databases
+CREATE TABLE databases (
+    id TEXT PRIMARY KEY, -- unique globally
+    name TEXT NOT NULL, -- unique per tenant
+    tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    UNIQUE (tenant_id, name) -- Ensure that a tenant has only one database with a given name
+);
+
+-- TABLE: embedding_fulltext_search
+CREATE VIRTUAL TABLE embedding_fulltext_search USING fts5(string_value, tokenize='trigram');
+
+-- TABLE: embedding_fulltext_search_config
+CREATE TABLE 'embedding_fulltext_search_config'(k PRIMARY KEY, v) WITHOUT ROWID;
+
+-- TABLE: embedding_fulltext_search_content
+CREATE TABLE 'embedding_fulltext_search_content'(id INTEGER PRIMARY KEY, c0);
+
+-- TABLE: embedding_fulltext_search_data
+CREATE TABLE 'embedding_fulltext_search_data'(id INTEGER PRIMARY KEY, block BLOB);
+
+-- TABLE: embedding_fulltext_search_docsize
+CREATE TABLE 'embedding_fulltext_search_docsize'(id INTEGER PRIMARY KEY, sz BLOB);
+
+-- TABLE: embedding_fulltext_search_idx
+CREATE TABLE 'embedding_fulltext_search_idx'(segid, term, pgno, PRIMARY KEY(segid, term)) WITHOUT ROWID;
+
+-- TABLE: embedding_metadata
+CREATE TABLE embedding_metadata (
+    id INTEGER REFERENCES embeddings(id),
+    key TEXT NOT NULL,
+    string_value TEXT,
+    int_value INTEGER,
+    float_value REAL, bool_value INTEGER,
+    PRIMARY KEY (id, key)
+);
+
+-- TABLE: embedding_metadata_array
+CREATE TABLE embedding_metadata_array (
+    id INTEGER NOT NULL REFERENCES embeddings(id),
+    key TEXT NOT NULL,
+    string_value TEXT,
+    int_value INTEGER,
+    float_value REAL,
+    bool_value INTEGER
+);
+
+-- TABLE: embeddings
+CREATE TABLE embeddings (
+    id INTEGER PRIMARY KEY,
+    segment_id TEXT NOT NULL,
+    embedding_id TEXT NOT NULL,
+    seq_id BLOB NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (segment_id, embedding_id)
+);
+
+-- TABLE: embeddings_queue
+CREATE TABLE embeddings_queue (
+    seq_id INTEGER PRIMARY KEY,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    operation INTEGER NOT NULL,
+    topic TEXT NOT NULL,
+    id TEXT NOT NULL,
+    vector BLOB,
+    encoding TEXT,
+    metadata TEXT
+);
+
+-- TABLE: embeddings_queue_config
+CREATE TABLE embeddings_queue_config (
+    id INTEGER PRIMARY KEY,
+    config_json_str TEXT
+);
+
+-- TABLE: maintenance_log
+CREATE TABLE maintenance_log (
+  id INT PRIMARY KEY,
+  timestamp INT NOT NULL,
+  operation TEXT NOT NULL
+);
+
+-- TABLE: max_seq_id
+CREATE TABLE max_seq_id (
+    segment_id TEXT PRIMARY KEY,
+    seq_id INTEGER);
+
+-- TABLE: migrations
+CREATE TABLE migrations (
+                dir TEXT NOT NULL,
+                version INTEGER NOT NULL,
+                filename TEXT NOT NULL,
+                sql TEXT NOT NULL,
+                hash TEXT NOT NULL,
+                PRIMARY KEY (dir, version)
+            );
+
+-- TABLE: segment_metadata
+CREATE TABLE segment_metadata (
+    segment_id TEXT  REFERENCES segments(id) ON DELETE CASCADE,
+    key TEXT NOT NULL,
+    str_value TEXT,
+    int_value INTEGER,
+    float_value REAL, bool_value INTEGER,
+    PRIMARY KEY (segment_id, key)
+);
+
+-- TABLE: segments
+CREATE TABLE "segments" (
+    id TEXT PRIMARY KEY,
+    type TEXT NOT NULL,
+    scope TEXT NOT NULL,
+    collection TEXT REFERENCES collection(id) NOT NULL
+);
+
+-- TABLE: tenants
+CREATE TABLE tenants (
+    id TEXT PRIMARY KEY,
+    UNIQUE (id)
+);
+
+-- INDEX: embedding_metadata_array_id_key
+CREATE INDEX embedding_metadata_array_id_key
+    ON embedding_metadata_array (id, key);
+
+-- INDEX: embedding_metadata_array_key_float
+CREATE INDEX embedding_metadata_array_key_float
+    ON embedding_metadata_array (key, float_value) WHERE float_value IS NOT NULL;
+
+-- INDEX: embedding_metadata_array_key_int
+CREATE INDEX embedding_metadata_array_key_int
+    ON embedding_metadata_array (key, int_value) WHERE int_value IS NOT NULL;
+
+-- INDEX: embedding_metadata_array_key_string
+CREATE INDEX embedding_metadata_array_key_string
+    ON embedding_metadata_array (key, string_value) WHERE string_value IS NOT NULL;
+
+-- INDEX: embedding_metadata_float_value
+CREATE INDEX embedding_metadata_float_value ON embedding_metadata (key, float_value) WHERE float_value IS NOT NULL;
+
+-- INDEX: embedding_metadata_int_value
+CREATE INDEX embedding_metadata_int_value ON embedding_metadata (key, int_value) WHERE int_value IS NOT NULL;
+
+-- INDEX: embedding_metadata_string_value
+CREATE INDEX embedding_metadata_string_value ON embedding_metadata (key, string_value) WHERE string_value IS NOT NULL;
+
+Total schema objects: 28

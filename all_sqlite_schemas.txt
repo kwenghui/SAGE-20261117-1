@@ -1,0 +1,412 @@
+
+====================================================================================================
+DATABASE: C:\Development\data\answer_cache.sqlite3
+====================================================================================================
+
+-- TABLE: answers
+CREATE TABLE answers (key TEXT PRIMARY KEY, saved REAL, entry TEXT NOT NULL);
+
+-- TABLE: cache_info
+CREATE TABLE cache_info (name TEXT PRIMARY KEY, value TEXT);
+
+-- Total schema objects: 2
+
+====================================================================================================
+DATABASE: C:\Development\data\app_cache.sqlite3
+====================================================================================================
+
+-- TABLE: active_snapshots
+CREATE TABLE active_snapshots (
+                    table_id TEXT PRIMARY KEY,
+                    snapshot_id INTEGER NOT NULL REFERENCES snapshots(id)
+                );
+
+-- TABLE: observations
+CREATE TABLE observations (
+                    snapshot_id INTEGER NOT NULL REFERENCES snapshots(id),
+                    series_id TEXT NOT NULL,
+                    series_name TEXT NOT NULL,
+                    unit TEXT NOT NULL,
+                    period_path TEXT NOT NULL,
+                    value_json TEXT NOT NULL
+                );
+
+-- TABLE: pending_refreshes
+CREATE TABLE pending_refreshes (
+                    table_id TEXT NOT NULL,
+                    revision TEXT NOT NULL,
+                    expected_count INTEGER,
+                    metadata_confirmed INTEGER NOT NULL DEFAULT 0,
+                    table_signature TEXT NOT NULL,
+                    completed_snapshot_id INTEGER REFERENCES snapshots(id),
+                    first_seen TEXT NOT NULL DEFAULT (datetime('now')),
+                    last_seen TEXT NOT NULL DEFAULT (datetime('now')),
+                    attempts INTEGER NOT NULL DEFAULT 1,
+                    PRIMARY KEY(table_id, revision)
+                );
+
+-- TABLE: pending_series
+CREATE TABLE pending_series (
+                    table_id TEXT NOT NULL,
+                    revision TEXT NOT NULL,
+                    series_id TEXT NOT NULL,
+                    row_json TEXT NOT NULL,
+                    first_seen TEXT NOT NULL DEFAULT (datetime('now')),
+                    last_seen TEXT NOT NULL DEFAULT (datetime('now')),
+                    PRIMARY KEY(table_id, revision, series_id)
+                );
+
+-- TABLE: response_cache
+CREATE TABLE response_cache (
+                    url TEXT PRIMARY KEY,
+                    saved_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    sha256 TEXT NOT NULL,
+                    payload_zlib BLOB NOT NULL
+                );
+
+-- TABLE: snapshots
+CREATE TABLE snapshots (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    table_id TEXT NOT NULL,
+                    collected_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    source_url TEXT NOT NULL,
+                    sha256 TEXT NOT NULL,
+                    row_count INTEGER NOT NULL,
+                    observation_count INTEGER NOT NULL,
+                    reported_total INTEGER,
+                    title TEXT NOT NULL,
+                    payload_zlib BLOB NOT NULL
+                );
+
+-- TABLE: sqlite_sequence
+CREATE TABLE sqlite_sequence(name,seq);
+
+-- INDEX: observation_by_snapshot
+CREATE INDEX observation_by_snapshot
+                    ON observations(snapshot_id, series_id);
+
+-- Total schema objects: 8
+
+====================================================================================================
+DATABASE: C:\Development\data\chroma_singstat\chroma.sqlite3
+====================================================================================================
+
+-- TABLE: acquire_write
+CREATE TABLE acquire_write (
+                id INTEGER PRIMARY KEY,
+                lock_status INTEGER NOT NULL
+            );
+
+-- TABLE: collection_metadata
+CREATE TABLE collection_metadata (
+    collection_id TEXT REFERENCES collections(id) ON DELETE CASCADE,
+    key TEXT NOT NULL,
+    str_value TEXT,
+    int_value INTEGER,
+    float_value REAL, bool_value INTEGER,
+    PRIMARY KEY (collection_id, key)
+);
+
+-- TABLE: collections
+CREATE TABLE "collections" (
+    id TEXT PRIMARY KEY, -- unique globally
+    name TEXT NOT NULL, -- unique per database
+    dimension INTEGER,
+    database_id TEXT NOT NULL REFERENCES databases(id) ON DELETE CASCADE, config_json_str TEXT, schema_str TEXT,
+    UNIQUE (name, database_id)
+);
+
+-- TABLE: databases
+CREATE TABLE databases (
+    id TEXT PRIMARY KEY, -- unique globally
+    name TEXT NOT NULL, -- unique per tenant
+    tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    UNIQUE (tenant_id, name) -- Ensure that a tenant has only one database with a given name
+);
+
+-- TABLE: embedding_fulltext_search
+CREATE VIRTUAL TABLE embedding_fulltext_search USING fts5(string_value, tokenize='trigram');
+
+-- TABLE: embedding_fulltext_search_config
+CREATE TABLE 'embedding_fulltext_search_config'(k PRIMARY KEY, v) WITHOUT ROWID;
+
+-- TABLE: embedding_fulltext_search_content
+CREATE TABLE 'embedding_fulltext_search_content'(id INTEGER PRIMARY KEY, c0);
+
+-- TABLE: embedding_fulltext_search_data
+CREATE TABLE 'embedding_fulltext_search_data'(id INTEGER PRIMARY KEY, block BLOB);
+
+-- TABLE: embedding_fulltext_search_docsize
+CREATE TABLE 'embedding_fulltext_search_docsize'(id INTEGER PRIMARY KEY, sz BLOB);
+
+-- TABLE: embedding_fulltext_search_idx
+CREATE TABLE 'embedding_fulltext_search_idx'(segid, term, pgno, PRIMARY KEY(segid, term)) WITHOUT ROWID;
+
+-- TABLE: embedding_metadata
+CREATE TABLE embedding_metadata (
+    id INTEGER REFERENCES embeddings(id),
+    key TEXT NOT NULL,
+    string_value TEXT,
+    int_value INTEGER,
+    float_value REAL, bool_value INTEGER,
+    PRIMARY KEY (id, key)
+);
+
+-- TABLE: embedding_metadata_array
+CREATE TABLE embedding_metadata_array (
+    id INTEGER NOT NULL REFERENCES embeddings(id),
+    key TEXT NOT NULL,
+    string_value TEXT,
+    int_value INTEGER,
+    float_value REAL,
+    bool_value INTEGER
+);
+
+-- TABLE: embeddings
+CREATE TABLE embeddings (
+    id INTEGER PRIMARY KEY,
+    segment_id TEXT NOT NULL,
+    embedding_id TEXT NOT NULL,
+    seq_id BLOB NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (segment_id, embedding_id)
+);
+
+-- TABLE: embeddings_queue
+CREATE TABLE embeddings_queue (
+    seq_id INTEGER PRIMARY KEY,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    operation INTEGER NOT NULL,
+    topic TEXT NOT NULL,
+    id TEXT NOT NULL,
+    vector BLOB,
+    encoding TEXT,
+    metadata TEXT
+);
+
+-- TABLE: embeddings_queue_config
+CREATE TABLE embeddings_queue_config (
+    id INTEGER PRIMARY KEY,
+    config_json_str TEXT
+);
+
+-- TABLE: maintenance_log
+CREATE TABLE maintenance_log (
+  id INT PRIMARY KEY,
+  timestamp INT NOT NULL,
+  operation TEXT NOT NULL
+);
+
+-- TABLE: max_seq_id
+CREATE TABLE max_seq_id (
+    segment_id TEXT PRIMARY KEY,
+    seq_id INTEGER);
+
+-- TABLE: migrations
+CREATE TABLE migrations (
+                dir TEXT NOT NULL,
+                version INTEGER NOT NULL,
+                filename TEXT NOT NULL,
+                sql TEXT NOT NULL,
+                hash TEXT NOT NULL,
+                PRIMARY KEY (dir, version)
+            );
+
+-- TABLE: segment_metadata
+CREATE TABLE segment_metadata (
+    segment_id TEXT  REFERENCES segments(id) ON DELETE CASCADE,
+    key TEXT NOT NULL,
+    str_value TEXT,
+    int_value INTEGER,
+    float_value REAL, bool_value INTEGER,
+    PRIMARY KEY (segment_id, key)
+);
+
+-- TABLE: segments
+CREATE TABLE "segments" (
+    id TEXT PRIMARY KEY,
+    type TEXT NOT NULL,
+    scope TEXT NOT NULL,
+    collection TEXT REFERENCES collection(id) NOT NULL
+);
+
+-- TABLE: tenants
+CREATE TABLE tenants (
+    id TEXT PRIMARY KEY,
+    UNIQUE (id)
+);
+
+-- INDEX: embedding_metadata_array_id_key
+CREATE INDEX embedding_metadata_array_id_key
+    ON embedding_metadata_array (id, key);
+
+-- INDEX: embedding_metadata_array_key_float
+CREATE INDEX embedding_metadata_array_key_float
+    ON embedding_metadata_array (key, float_value) WHERE float_value IS NOT NULL;
+
+-- INDEX: embedding_metadata_array_key_int
+CREATE INDEX embedding_metadata_array_key_int
+    ON embedding_metadata_array (key, int_value) WHERE int_value IS NOT NULL;
+
+-- INDEX: embedding_metadata_array_key_string
+CREATE INDEX embedding_metadata_array_key_string
+    ON embedding_metadata_array (key, string_value) WHERE string_value IS NOT NULL;
+
+-- INDEX: embedding_metadata_float_value
+CREATE INDEX embedding_metadata_float_value ON embedding_metadata (key, float_value) WHERE float_value IS NOT NULL;
+
+-- INDEX: embedding_metadata_int_value
+CREATE INDEX embedding_metadata_int_value ON embedding_metadata (key, int_value) WHERE int_value IS NOT NULL;
+
+-- INDEX: embedding_metadata_string_value
+CREATE INDEX embedding_metadata_string_value ON embedding_metadata (key, string_value) WHERE string_value IS NOT NULL;
+
+-- Total schema objects: 28
+
+====================================================================================================
+DATABASE: C:\Development\data\daily_token_usage.sqlite3
+====================================================================================================
+
+-- TABLE: daily_tokens
+CREATE TABLE daily_tokens (day TEXT PRIMARY KEY, used INTEGER NOT NULL);
+
+-- Total schema objects: 1
+
+====================================================================================================
+DATABASE: C:\Development\data\discovery_index.sqlite3
+====================================================================================================
+
+-- TABLE: docs
+CREATE TABLE docs (
+    id TEXT PRIMARY KEY, table_id TEXT NOT NULL, title TEXT NOT NULL,
+    source_label TEXT NOT NULL, source_url TEXT NOT NULL,
+    text TEXT NOT NULL, keywords TEXT NOT NULL, doc_type TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+
+-- INDEX: idx_rag_table
+CREATE INDEX idx_rag_table ON docs(table_id);
+
+-- Total schema objects: 2
+
+====================================================================================================
+DATABASE: C:\Development\data\knowledge_base.sqlite3
+====================================================================================================
+
+-- TABLE: kb_fts
+CREATE VIRTUAL TABLE kb_fts USING fts5(doc_id UNINDEXED, text, tokenize='unicode61');
+
+-- TABLE: kb_fts_config
+CREATE TABLE 'kb_fts_config'(k PRIMARY KEY, v) WITHOUT ROWID;
+
+-- TABLE: kb_fts_content
+CREATE TABLE 'kb_fts_content'(id INTEGER PRIMARY KEY, c0, c1);
+
+-- TABLE: kb_fts_data
+CREATE TABLE 'kb_fts_data'(id INTEGER PRIMARY KEY, block BLOB);
+
+-- TABLE: kb_fts_docsize
+CREATE TABLE 'kb_fts_docsize'(id INTEGER PRIMARY KEY, sz BLOB);
+
+-- TABLE: kb_fts_idx
+CREATE TABLE 'kb_fts_idx'(segid, term, pgno, PRIMARY KEY(segid, term)) WITHOUT ROWID;
+
+-- TABLE: kb_ingestion
+CREATE TABLE kb_ingestion (
+      table_id TEXT PRIMARY KEY,
+      attempt_count INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'pending',
+      detail TEXT NOT NULL DEFAULT ''
+    );
+
+-- TABLE: kb_observations
+CREATE TABLE kb_observations (
+      table_id TEXT NOT NULL,
+      series_id TEXT NOT NULL,
+      period TEXT NOT NULL,
+      raw_value TEXT NOT NULL,
+      numeric_value TEXT,
+      fetched_at TEXT NOT NULL,
+      PRIMARY KEY(table_id,series_id,period),
+      FOREIGN KEY(table_id, series_id) REFERENCES kb_series(table_id,series_id) ON DELETE CASCADE
+    );
+
+-- TABLE: kb_series
+CREATE TABLE kb_series (
+      table_id TEXT NOT NULL REFERENCES kb_tables(table_id) ON DELETE CASCADE,
+      series_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      unit TEXT NOT NULL DEFAULT '',
+      footnote TEXT NOT NULL DEFAULT '',
+      description TEXT NOT NULL DEFAULT '',
+      observed_periods INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY(table_id, series_id)
+    );
+
+-- TABLE: kb_structured_sources
+CREATE TABLE kb_structured_sources (
+      table_id TEXT PRIMARY KEY, title TEXT NOT NULL, table_type TEXT NOT NULL,
+      frequency TEXT NOT NULL, reference_year INTEGER, reference_basis TEXT NOT NULL,
+      source_last_updated TEXT NOT NULL, api_generated_at TEXT NOT NULL,
+      fetched_at TEXT NOT NULL, ingestion_status TEXT NOT NULL
+    );
+
+-- TABLE: kb_structured_values
+CREATE TABLE kb_structured_values (
+      table_id TEXT NOT NULL, series_id TEXT NOT NULL, series_title TEXT NOT NULL,
+      unit TEXT NOT NULL, shape TEXT NOT NULL, dimension_path TEXT NOT NULL,
+      reference_period TEXT, raw_value TEXT NOT NULL, numeric_value TEXT,
+      fetched_at TEXT NOT NULL,
+      PRIMARY KEY(table_id, series_id, dimension_path),
+      FOREIGN KEY(table_id) REFERENCES kb_structured_sources(table_id)
+    );
+
+-- TABLE: kb_tables
+CREATE TABLE kb_tables (
+      table_id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      theme TEXT NOT NULL DEFAULT '',
+      subject TEXT NOT NULL DEFAULT '',
+      frequency TEXT NOT NULL DEFAULT '',
+      source_agency TEXT NOT NULL DEFAULT '',
+      source_updated TEXT NOT NULL DEFAULT '',
+      description TEXT NOT NULL DEFAULT '',
+      source_url TEXT NOT NULL,
+      metadata_status TEXT NOT NULL DEFAULT 'catalogue_only',
+      series_status TEXT NOT NULL DEFAULT 'not_started',
+      series_count INTEGER,
+      last_ingested TEXT NOT NULL DEFAULT '',
+      last_error TEXT NOT NULL DEFAULT ''
+    );
+
+-- TABLE: kb_vector_sync
+CREATE TABLE kb_vector_sync (
+      doc_id TEXT PRIMARY KEY,
+      content_sha256 TEXT NOT NULL,
+      indexed_at TEXT NOT NULL
+    );
+
+-- TABLE: sqlite_stat1
+CREATE TABLE sqlite_stat1(tbl,idx,stat);
+
+-- INDEX: idx_kb_structured_values_lookup
+CREATE INDEX idx_kb_structured_values_lookup
+      ON kb_structured_values(table_id,series_id,reference_period);
+
+-- Total schema objects: 15
+
+====================================================================================================
+DATABASE: C:\Development\data\source_catalog.sqlite3
+====================================================================================================
+
+-- TABLE: docs
+CREATE TABLE docs (
+                id TEXT PRIMARY KEY, table_id TEXT NOT NULL, title TEXT NOT NULL,
+                source_label TEXT NOT NULL, source_url TEXT NOT NULL,
+                text TEXT NOT NULL, keywords TEXT NOT NULL, doc_type TEXT NOT NULL,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+
+-- INDEX: idx_rag_table
+CREATE INDEX idx_rag_table ON docs(table_id);
+
+-- Total schema objects: 2

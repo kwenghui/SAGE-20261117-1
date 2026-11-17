@@ -1,0 +1,68 @@
+# Python environments
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Secrets: never commit or archive these. Use .env.example as the template.
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+*.pem
+*.key
+
+# Local databases and caches
+# Verified-answer cache (rebuilt automatically; may hold sample questions only)
+data/answer_cache.sqlite3*
+# Today's token count (rebuilt automatically)
+data/daily_token_usage.sqlite3*
+# *.db
+# *.sqlite
+# *.sqlite3
+# chroma/
+
+# Runtime artifacts. These hold visitors' questions (personal data under PDPA).
+logs/
+*.log
+*.tmp
+.cache/
+.streamlit/cache/
+debug.txt
+questions/failed.txt
+questions/success.txt
+test_progress.json
+test_reset_once.json
+charts/
+# Search traces and evaluation reports record the questions that were asked
+# (tools/test_search_trace.py, tools/evaluate_discovery.py). Never commit them.
+reports/*trace*
+reports/discovery_eval_*
+# Rotated and temporary copies of the logs above
+debug.txt.*
+questions/failed.txt.*
+questions/success.txt.*
+# Tool caches
+.ruff_cache/
+.mypy_cache/
+
+# Backups and editor copies of source files
+*.bak
+*.backup
+*.backup-*
+*.before-*
+*.zip
+
+# Editors and operating system
+.vscode/
+.ropeproject/
+.DS_Store
+Thumbs.db
+
+# Log pseudonym key (losing it only unlinks past digests; never commit it)
+.sage_log_key
+*.txt.1
+*.tmp

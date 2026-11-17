@@ -1,0 +1,13 @@
+# Exact versions, the same ones as requirements.lock (which adds hashes). Streamlit
+# Community Cloud installs THIS file, so ranges here meant production could run library
+# versions the tests never saw. To upgrade: change a version here, regenerate the lock
+# (see requirements.in), run the tests, then commit both files together.
+chromadb==1.5.9
+streamlit==1.66.1
+openai==3.37.0
+python-dotenv==1.2.4
+requests==2.34.2
+numpy==2.5.4
+pandas==2.3.3
+altair==6.3.0
+plotly==6.9.0
